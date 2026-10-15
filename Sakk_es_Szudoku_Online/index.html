@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sakk és Szudoku Online</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/chess.css">
+    <link rel="stylesheet" href="css/sudoku.css">
+</head>
+<body>
+
+    <!-- Felső Fejléc -->
+    <header class="app-header">
+        <div class="brand" id="btn-home">
+            <div class="brand-icon">♛</div>
+            <div class="brand-title">Sakk & Szudoku <span>Online</span></div>
+        </div>
+
+        <div class="header-controls">
+            <div class="player-tag">
+                <span>Név:</span>
+                <input type="text" id="player-name-input" maxlength="15" value="Játékos" title="Kattints a név módosításához">
+            </div>
+
+            <button class="icon-btn" id="btn-mute" title="Hang némítása">🔊</button>
+            <button class="icon-btn" id="btn-chat-toggle" title="Csevegőablak">
+                💬
+                <span class="badge" id="chat-unread-badge" style="display: none;">0</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Online Szoba Információs Sáv (Játék közben látható) -->
+    <div class="room-bar" id="online-room-bar" style="display: none;">
+        <div class="room-bar-info">
+            <span>Szobakód: <strong class="room-badge" id="room-bar-code">------</strong></span>
+            <span>Késleltetés: <span class="ping-tag" id="room-bar-ping">0 ms</span></span>
+        </div>
+        <button class="btn btn-secondary" style="padding: 4px 12px; font-size: 13px;" onclick="window.app.copyRoomLink()">🔗 Link Másolása</button>
+    </div>
+
+    <!-- Fő Konténer -->
+    <main class="main-container">
+
+        <!-- 1. FŐMENÜ (LOBBY) -->
+        <section class="lobby-view" id="view-lobby">
+            <div class="lobby-hero">
+                <h1>Játssz Sakkot és Szudokut</h1>
+                <p>Gyakorolj a beépített mesterséges intelligencia ellen, vagy hívd ki a barátaidat online valós idejű többjátékos szobákban!</p>
+            </div>
+
+            <div class="game-cards">
+                <!-- Sakk Kártya -->
+                <div class="game-card">
+                    <div class="game-card-icon">♟️</div>
+                    <h2>Sakk (Chess)</h2>
+                    <p>Klasszikus királyi játék teljes szabályrendszerrel (sáncolás, en passant, promóció), órával és AI ellenféllel.</p>
+                    <div class="card-actions">
+                        <button class="btn btn-primary" onclick="window.app.openChessOptions()">🤖 Játék Számítógép Ellen</button>
+                        <button class="btn btn-secondary" onclick="window.app.startChessLocal()">👥 Helyi 2 Játékos</button>
+                        <button class="btn btn-accent" onclick="window.app.openChessOnlineModal()">🌐 Online Szoba Készítése</button>
+                    </div>
+                </div>
+
+                <!-- Szudoku Kártya -->
+                <div class="game-card">
+                    <div class="game-card-icon">🔢</div>
+                    <h2>Szudoku (Sudoku)</h2>
+                    <p>Logikai számkirakó játék 4 nehézségi szinttel, ceruzajegyzetekkel és online verseny / kooperatív móddal.</p>
+                    <div class="card-actions">
+                        <button class="btn btn-primary" onclick="window.app.openSudokuOptions()">🧩 Egyéni Játék</button>
+                        <button class="btn btn-accent" onclick="window.app.openSudokuOnlineModal()">🌐 Online Párbaj & Kooperáció</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Gyors Csatlakozás Szobához -->
+            <div class="join-section">
+                <div class="join-text">
+                    <h3>Kaptál egy szobakódot?</h3>
+                    <p>Add meg a 6 jegyű kódot és csatlakozz a barátod mérkőzéséhez azonnal!</p>
+                </div>
+                <div style="display: flex; gap: 8px;">
+                    <input type="text" id="quick-join-input" class="form-control" placeholder="PL. AB12CD" style="text-transform: uppercase; width: 140px; text-align: center; font-weight: 700; letter-spacing: 2px;">
+                    <button class="btn btn-primary" onclick="const v = document.getElementById('quick-join-input').value; if(v) { window.app.openJoinModal(); document.getElementById('join-code-input').value = v; window.app.joinRoom(); }">Csatlakozás</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- 2. SAKK NÉZET -->
+        <section class="chess-view" id="view-chess" style="display: none;">
+            <div class="chess-main-area">
+                <!-- Időzítők -->
+                <div class="chess-timers" id="chess-timers">
+                    <div class="clock-card" id="black-clock-card">
+                        <span class="clock-label">Fekete</span>
+                        <span class="clock-digits" id="black-timer">10:00</span>
+                    </div>
+                    <div class="clock-card" id="white-clock-card">
+                        <span class="clock-label">Fehér</span>
+                        <span class="clock-digits" id="white-timer">10:00</span>
+                    </div>
+                </div>
+
+                <!-- Sakktábla -->
+                <div class="chess-board-wrapper">
+                    <div class="chess-board" id="chess-board"></div>
+                </div>
+
+                <!-- Pályatéma választó -->
+                <div class="board-theme-picker">
+                    <div class="board-theme-picker-label">🎨 Sakktábla stílus:</div>
+                    <div class="board-theme-grid" id="board-theme-grid">
+                        <!-- JS tölti fel -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sakk Oldalsáv -->
+            <div class="chess-sidebar">
+                <div class="sidebar-header">
+                    <div class="status-box" id="chess-status-text">Fehér lépése</div>
+                </div>
+
+                <!-- Leütött bábuk -->
+                <div class="captured-container">
+                    <div style="font-size: 12px; color: var(--text-muted);">Leütött fekete bábuk:</div>
+                    <div class="captured-row" id="white-captured"></div>
+                    <div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">Leütött fehér bábuk:</div>
+                    <div class="captured-row" id="black-captured"></div>
+                </div>
+
+                <!-- Lépéstörténet -->
+                <div class="history-container">
+                    <div class="history-title">Lépéselőzmények</div>
+                    <div class="history-list" id="chess-history-list"></div>
+                </div>
+
+                <!-- Gombok -->
+                <div class="chess-actions">
+                    <button class="btn btn-secondary" onclick="window.app.chess.flipBoard()">🔄 Tábla Megfordítása</button>
+                    <button class="btn btn-danger" onclick="if(confirm('Biztosan feladod a játszmát?')) { window.sound.playVictory(); window.app.showModal('Feladás', 'Feladtad a partit.'); }">🏳️ Feladás</button>
+                    <button class="btn btn-primary" onclick="window.app.returnToLobby()">🏠 Vissza a Menübe</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- 3. SZUDOKU NÉZET -->
+        <section class="sudoku-view" id="view-sudoku" style="display: none;">
+            <div class="sudoku-main-area">
+                <!-- Verseny haladási sáv (Online Verseny esetén) -->
+                <div class="sudoku-race-container" id="sudoku-race-container" style="display: none;">
+                    <div class="race-track">
+                        <div class="race-labels">
+                            <span>Saját haladás</span>
+                            <span id="race-my-score">0/81 (0%)</span>
+                        </div>
+                        <div class="race-bar-bg">
+                            <div class="race-bar-fill my" id="race-my-fill" style="width: 0%;"></div>
+                        </div>
+                    </div>
+                    <div class="race-track">
+                        <div class="race-labels">
+                            <span>Ellenfél haladása</span>
+                            <span id="race-opp-score">0/81 (0%)</span>
+                        </div>
+                        <div class="race-bar-bg">
+                            <div class="race-bar-fill opp" id="race-opp-fill" style="width: 0%;"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Szudoku Rács -->
+                <div class="sudoku-board-wrapper">
+                    <div class="sudoku-board" id="sudoku-board"></div>
+                </div>
+
+                <!-- Numerikus Billentyűzet és Eszközök -->
+                <div class="sudoku-controls">
+                    <div class="numpad-row">
+                        <button class="numpad-btn" id="numpad-1" onclick="window.app.sudoku.inputNumber(1)">1</button>
+                        <button class="numpad-btn" id="numpad-2" onclick="window.app.sudoku.inputNumber(2)">2</button>
+                        <button class="numpad-btn" id="numpad-3" onclick="window.app.sudoku.inputNumber(3)">3</button>
+                        <button class="numpad-btn" id="numpad-4" onclick="window.app.sudoku.inputNumber(4)">4</button>
+                        <button class="numpad-btn" id="numpad-5" onclick="window.app.sudoku.inputNumber(5)">5</button>
+                        <button class="numpad-btn" id="numpad-6" onclick="window.app.sudoku.inputNumber(6)">6</button>
+                        <button class="numpad-btn" id="numpad-7" onclick="window.app.sudoku.inputNumber(7)">7</button>
+                        <button class="numpad-btn" id="numpad-8" onclick="window.app.sudoku.inputNumber(8)">8</button>
+                        <button class="numpad-btn" id="numpad-9" onclick="window.app.sudoku.inputNumber(9)">9</button>
+                    </div>
+
+                    <div class="action-tools-row">
+                        <button class="tool-btn" id="sudoku-btn-note" onclick="window.app.sudoku.toggleNoteMode()">✏️ Jegyzet (N)</button>
+                        <button class="tool-btn" id="sudoku-btn-erase" onclick="window.app.sudoku.erase()">🧹 Törlés (Del)</button>
+                        <button class="tool-btn" id="sudoku-btn-undo" onclick="window.app.sudoku.undo()">↩️ Vissza (Z)</button>
+                        <button class="tool-btn" id="sudoku-btn-hint" onclick="window.app.sudoku.giveHint()">💡 Segítség (H)</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Szudoku Oldalsáv -->
+            <div class="sudoku-sidebar">
+                <div class="sidebar-header">
+                    <div class="status-box">Szudoku Információk</div>
+                </div>
+
+                <div class="stat-item">
+                    <span>Eltelt Idő:</span>
+                    <span class="stat-val" id="sudoku-timer">0:00</span>
+                </div>
+
+                <div class="stat-item">
+                    <span>Hibák száma:</span>
+                    <span class="stat-val" id="sudoku-mistakes">0</span>
+                </div>
+
+                <div class="chess-actions" style="margin-top: 10px;">
+                    <button class="btn btn-secondary" onclick="window.app.sudoku.startNewGame({ difficulty: window.app.sudoku.difficulty, mode: window.app.sudoku.gameMode })">🔄 Új Feladvány</button>
+                    <button class="btn btn-primary" onclick="window.app.returnToLobby()">🏠 Vissza a Menübe</button>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Lebegő Csevegő Panel -->
+    <div class="chat-panel" id="chat-panel">
+        <div class="chat-header-bar">
+            <span>💬 Játék Csevegő</span>
+            <button class="modal-close" onclick="window.app.toggleChat()">✕</button>
+        </div>
+        <div class="chat-messages" id="chat-messages">
+            <div class="chat-msg sys">
+                <div class="chat-body">Üdv a csevegőben! Itt beszélgethetsz a partnereddel játék közben.</div>
+            </div>
+        </div>
+        <div class="chat-input-row">
+            <input type="text" id="chat-input" placeholder="Írj üzenetet..." maxlength="100">
+            <button class="btn btn-primary" id="btn-chat-send" style="padding: 6px 12px; font-size: 13px;">Küldés</button>
+        </div>
+    </div>
+
+    <!-- MODÁLOK -->
+
+    <!-- Általános Értesítés / Játék vége Modál -->
+    <div class="modal-overlay" id="info-modal">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h3 id="info-modal-title">Értesítés</h3>
+                <button class="modal-close" onclick="window.app.hideModal()">✕</button>
+            </div>
+            <p id="info-modal-msg" style="color: var(--text-muted); font-size: 16px; line-height: 1.5;"></p>
+            <button class="btn btn-primary" onclick="window.app.hideModal()">Rendben</button>
+        </div>
+    </div>
+
+    <!-- Sakk Mód Választó (AI) Modál -->
+    <div class="modal-overlay" id="chess-mode-modal">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h3>Sakk Számítógép Ellen</h3>
+                <button class="modal-close" onclick="window.app.hideAllModals()">✕</button>
+            </div>
+            <p style="color: var(--text-muted);">Válassz nehézségi szintet a mesterséges intelligenciához:</p>
+            <div style="display: flex; flex-direction: column; gap: 10px;">
+                <button class="btn btn-secondary" onclick="window.app.startChessSolo('easy')">🌱 Kezdő (Könnyű)</button>
+                <button class="btn btn-primary" onclick="window.app.startChessSolo('medium')">⚔️ Haladó (Közepes)</button>
+                <button class="btn btn-accent" onclick="window.app.startChessSolo('hard')">👑 Mester (Nehéz - Minimax)</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Szudoku Mód Választó (Egyéni) Modál -->
+    <div class="modal-overlay" id="sudoku-mode-modal">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h3>Szudoku Nehézség</h3>
+                <button class="modal-close" onclick="window.app.hideAllModals()">✕</button>
+            </div>
+            <p style="color: var(--text-muted);">Válassz nehézségi szintet a rejtvényhez:</p>
+            <div style="display: flex; flex-direction: column; gap: 10px;">
+                <button class="btn btn-secondary" onclick="window.app.startSudokuSolo('easy')">🟢 Könnyű (~40 kezdőszám)</button>
+                <button class="btn btn-primary" onclick="window.app.startSudokuSolo('medium')">🟡 Közepes (~32 kezdőszám)</button>
+                <button class="btn btn-accent" onclick="window.app.startSudokuSolo('hard')">🟠 Nehéz (~27 kezdőszám)</button>
+                <button class="btn btn-danger" onclick="window.app.startSudokuSolo('master')">🔴 Mester (~23 kezdőszám)</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Online Szoba Létrehozása Modál -->
+    <div class="modal-overlay" id="online-create-modal">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h3>Online Szoba Készítése</h3>
+                <button class="modal-close" onclick="window.app.hideAllModals()">✕</button>
+            </div>
+            <input type="hidden" id="online-target-game" value="chess">
+
+            <!-- Sakk beállítások -->
+            <div id="chess-online-options" style="display: flex; flex-direction: column; gap: 14px;">
+                <div class="form-group">
+                    <label>Saját színed:</label>
+                    <select id="chess-color-select" class="form-control">
+                        <option value="w">Fehér (Első lépés)</option>
+                        <option value="b">Fekete</option>
+                        <option value="random">Véletlenszerű sorsolás</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Gondolkodási idő (Sakkóra):</label>
+                    <select id="chess-time-select" class="form-control">
+                        <option value="180">3 perc (Blitz)</option>
+                        <option value="300">5 perc (Gyors)</option>
+                        <option value="600" selected>10 perc (Rapid)</option>
+                        <option value="0">Időkorlát nélkül</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Szudoku beállítások -->
+            <div id="sudoku-online-options" style="display: none; flex-direction: column; gap: 14px;">
+                <div class="form-group">
+                    <label>Játékmód:</label>
+                    <select id="sudoku-online-mode-select" class="form-control">
+                        <option value="race">Párbaj / Verseny (Aki előbb kész)</option>
+                        <option value="coop">Kooperatív (Együttfejtés valós időben)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Nehézség:</label>
+                    <select id="sudoku-difficulty-select" class="form-control">
+                        <option value="easy">Könnyű</option>
+                        <option value="medium" selected>Közepes</option>
+                        <option value="hard">Nehéz</option>
+                        <option value="master">Mester</option>
+                    </select>
+                </div>
+            </div>
+
+            <button class="btn btn-primary" onclick="window.app.createOnlineRoom()">🚀 Szoba Létrehozása</button>
+        </div>
+    </div>
+
+    <!-- Várakozás Ellenfére Modál -->
+    <div class="modal-overlay" id="room-waiting-modal">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h3>Várakozás a játékostársra</h3>
+                <button class="modal-close" onclick="window.app.returnToLobby()">✕</button>
+            </div>
+            <p style="color: var(--text-muted); text-align: center;">Oszd meg a szobakódot vagy a linket a barátoddal:</p>
+
+            <div class="code-display-box">
+                <div class="code-display-text" id="room-code-display">------</div>
+            </div>
+
+            <div class="form-group">
+                <label>Közvetlen meghívó link:</label>
+                <div style="display: flex; gap: 6px;">
+                    <input type="text" id="room-link-input" class="form-control" readonly style="font-size: 13px;">
+                    <button class="btn btn-secondary" onclick="window.app.copyRoomLink()">Másolás</button>
+                </div>
+            </div>
+
+            <div style="text-align: center; color: var(--accent); font-size: 14px; margin-top: 6px;">
+                ⏳ Amint csatlakozik a partner, a játék automatikusan elindul...
+            </div>
+            <button class="btn btn-secondary" onclick="window.app.returnToLobby()">Mégse / Vissza</button>
+        </div>
+    </div>
+
+    <!-- Csatlakozás Szobához Modál -->
+    <div class="modal-overlay" id="join-room-modal">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h3>Csatlakozás Szobához</h3>
+                <button class="modal-close" onclick="window.app.hideAllModals()">✕</button>
+            </div>
+            <div class="form-group">
+                <label>Add meg a 6 karakteres szobakódot:</label>
+                <input type="text" id="join-code-input" class="form-control" placeholder="PL. AB12CD" maxlength="6" style="text-transform: uppercase; font-size: 20px; font-weight: 700; letter-spacing: 3px; text-align: center;">
+            </div>
+            <button class="btn btn-primary" id="btn-submit-join" onclick="window.app.joinRoom()">Csatlakozás</button>
+        </div>
+    </div>
+
+    <!-- Paraszt Átváltozás (Promóció) Modál -->
+    <div class="modal-overlay" id="chess-promo-modal">
+        <div class="modal-card" style="max-width: 380px; text-align: center;">
+            <div class="modal-header">
+                <h3>Gyalog Átváltozás</h3>
+            </div>
+            <p style="color: var(--text-muted);">Válassz új bábut:</p>
+            <div class="promo-choices">
+                <button class="promo-piece-btn" id="promo-Q" onclick="window.app.chess.choosePromotion('Q')" title="Vezér">♛</button>
+                <button class="promo-piece-btn" id="promo-R" onclick="window.app.chess.choosePromotion('R')" title="Bástya">♜</button>
+                <button class="promo-piece-btn" id="promo-B" onclick="window.app.chess.choosePromotion('B')" title="Futó">♝</button>
+                <button class="promo-piece-btn" id="promo-N" onclick="window.app.chess.choosePromotion('N')" title="Huszár">♞</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Szkriptek betöltése -->
+    <script src="lib/peerjs.min.js"></script>
+    <script>
+        // CDN Fallback ha a helyi fájl nem töltődne be
+        if (typeof Peer === 'undefined') {
+            document.write('<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"><\/script>');
+        }
+    </script>
+    <script src="js/audio.js"></script>
+    <script src="js/network.js"></script>
+    <script src="js/chess-engine.js"></script>
+    <script src="js/pieces.js"></script>
+    <script src="js/chess-ui.js"></script>
+    <script src="js/sudoku-engine.js"></script>
+    <script src="js/sudoku-ui.js"></script>
+    <script src="js/app.js"></script>
+
+</body>
+</html>
+
